@@ -170,7 +170,14 @@ var cparse = (function()
 
 		function parseStatement()
 		{
-			if(lookahead("if"))
+			if(lookahead("return"))
+			{
+				return {
+					type: "ReturnStatement",
+					value: parseExpression(";")
+				};
+			}
+			else if(lookahead("if"))
 			{
 				consume("(");
 				var stmt = {type: "IfStatement"};
@@ -213,6 +220,17 @@ var cparse = (function()
 				stmt.body = parseBody();
 
 				return stmt;
+			}
+			else if(definitionIncoming())
+			{
+				var def = readDefinition();
+				if(lookahead("="))
+					def.value = parseExpression(";");
+				else
+					consume(";");
+
+				def.type = "VariableDeclaration";
+				return def;
 			}
 			else
 			{
