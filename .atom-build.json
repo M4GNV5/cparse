@@ -1,0 +1,7 @@
+{
+    "cmd": "node",
+    "args": [
+        "./test.js"
+    ],
+    "cwd": "{PROJECT_PATH}/tests"
+}
