@@ -16,7 +16,7 @@ console.log(JSON.stringify(ast, undefined, 4));
 
 ### Browser
 ```html
-<script src="luaparse.js"></script>
+<script src="cparse.js"></script>
 <script>
 var ast = cparse("void main() { int answer = 6 * 7; }");
 console.log(JSON.stringify(ast, undefined, 4));
