@@ -3,44 +3,62 @@ var cparse = (function()
 	const EOF = {type: "EOF"};
 	const ops = {
 		"=": 1,
+		"+=": 1,
+		"-=": 1,
+		"*=": 1,
+		"/=": 1,
+		"%=": 1,
+		">>=": 1,
+		"<<=": 1,
+		"&=": 1,
+		"^=": 1,
+		"|=": 1,
 
-		"||": 2,
-		"&&": 3,
+		"?": 2, //ternary
+		":": 2, //ternary
 
-		"<": 4,
-		">": 4,
-		"<=": 4,
-		">=": 4,
-		"==": 4,
-		"!=": 4,
+		"||": 3,
+		"&&": 4,
 
-		">>": 5, //shift right
-		"<<": 5, //shift left
+		"|": 5,
+		"^": 6,
+		"&": 7,
 
-		"+": 6,
-		"-": 6,
+		"<": 8,
+		">": 8,
+		"<=": 8,
+		">=": 8,
+		"==": 8,
+		"!=": 8,
 
-		"*": 7,
-		"/": 7,
-		"%": 7,
+		">>": 9, //shift right
+		"<<": 9, //shift left
+
+		"+": 10,
+		"-": 10,
+
+		"*": 11,
+		"/": 11,
+		"%": 11,
 
 		/*".": 9, //structure member access
 		"->": 9 //structure pointer member access*/
 	};
 
 	const prefixedOps = {
-		"!": 8, //logical NOT
-		"~": 8, //bitwise NOT
-		"&": 8, //adress of
-		"*": 8, //dereference
-		"-": 8, //unary -
-		"++": 8, //prefixed ++
-		"--": 8, //prefixed --
+		"!": 12, //logical NOT
+		"~": 12, //bitwise NOT
+		"&": 12, //adress of
+		"*": 12, //dereference
+		"+": 12, //unary +
+		"-": 12, //unary -
+		"++": 12, //prefixed ++
+		"--": 12, //prefixed --
 	}
 
 	const suffixedOps = {
-		"++": 9, //suffixed ++
-		"--": 9 //suffixed --
+		"++": 13, //suffixed ++
+		"--": 13 //suffixed --
 	}
 
 	return function(src)
