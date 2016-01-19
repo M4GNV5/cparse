@@ -87,6 +87,7 @@ var cparse = (function()
 
 			while(curr)
 			{
+				skipBlanks();
 				if(lookahead("struct"))
 				{
 					throw "structs not yet supported";
