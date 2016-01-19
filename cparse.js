@@ -575,11 +575,6 @@ var cparse = (function()
 
 			curr = curr || EOF;
 		}
-
-		function escapeRegExp(str)
-		{
-			return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
-		}
 	};
 })();
 
