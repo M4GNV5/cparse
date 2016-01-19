@@ -28,9 +28,18 @@
 
 			function outputAst()
 			{
-				var src = editor.getSession().getValue();
-				var ast = cparse(src);
-				document.getElementById("out").innerHTML = "<pre>" + JSON.stringify(ast, undefined, 4) + "</pre>";
+				var out = "Unknown error";
+				try
+				{
+					var src = editor.getSession().getValue();
+					var ast = cparse(src);
+					out = "<pre>" + JSON.stringify(ast, undefined, 4) + "</pre>";
+				}
+				catch(e)
+				{
+					out = "<div style=\"font-size: 16px;\">" + e.toString() + "</div>";
+				}
+				document.getElementById("out").innerHTML = out;
 			}
 			outputAst();
 		</script>
