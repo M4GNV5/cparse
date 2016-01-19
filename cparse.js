@@ -14,8 +14,8 @@ var cparse = (function()
 		"^=": 1,
 		"|=": 1,
 
-		"?": 2, //ternary
-		":": 2, //ternary
+		/*"?": 2, //ternary
+		":": 2, //ternary*/
 
 		"||": 3,
 		"&&": 4,
@@ -287,7 +287,7 @@ var cparse = (function()
 					}
 					else if(!wasOp)
 					{
-						unexpected("Operator " + wasOp);
+						unexpected("Operator ");
 					}
 					else if(numberIncoming())
 					{
