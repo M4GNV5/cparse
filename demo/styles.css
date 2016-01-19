@@ -1,0 +1,22 @@
+body
+{
+    max-width: 1000px;
+    margin: 3px auto;
+}
+#editor
+{
+    width: 50%;
+    height: 500px;
+    position: relative;
+}
+#out
+{
+    padding-left: 2%;
+    padding-top: 5px;
+    font-size: 12px;
+    max-width: 500px;
+}
+#editor, #out
+{
+    float: left;
+}

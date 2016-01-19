@@ -1,0 +1,38 @@
+<html>
+    <head>
+        <link href="styles.css" rel="stylesheet" />
+    </head>
+    <body>
+        <div id="editor">void main()
+{
+	int answer = 6 * 7;
+	printf("answer = %d", answer);
+}
+</div>
+		<div id="out"></div>
+		<script src="../cparse.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/ace/1.2.2/ace.js" type="text/javascript"></script>
+        <script>
+			var editor = ace.edit("editor");
+			editor.setTheme("ace/theme/tomorrow_night");
+			editor.getSession().setMode("ace/mode/c_cpp");
+			editor.setOption("fontSize", 14);
+
+			var timeout;
+			editor.getSession().on("change", function()
+			{
+				if(timeout)
+					clearTimeout(timeout);
+				timeout = setTimeout(outputAst, 300);
+			});
+
+			function outputAst()
+			{
+				var src = editor.getSession().getValue();
+				var ast = cparse(src);
+				document.getElementById("out").innerHTML = "<pre>" + JSON.stringify(ast, undefined, 4) + "</pre>";
+			}
+			outputAst();
+		</script>
+    </body>
+</html>
