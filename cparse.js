@@ -1,6 +1,5 @@
 var cparse = (function()
 {
-	const EOF = {type: "EOF"};
 	const ops = {
 		"=": 1,
 		"+=": 1,
@@ -86,7 +85,7 @@ var cparse = (function()
 		{
 			var stmts = [];
 
-			while(curr != EOF)
+			while(curr)
 			{
 				if(lookahead("struct"))
 				{
@@ -159,7 +158,7 @@ var cparse = (function()
 			var stmts = [];
 			consume("{");
 
-			while(!(curr == "}" || curr == EOF))
+			while(!(curr == "}" || !curr))
 			{
 				stmts.push(parseStatement());
 			}
@@ -287,7 +286,7 @@ var cparse = (function()
 				opstack.unshift(op);
 			}
 
-			while(end.indexOf(curr) == -1 && curr != EOF)
+			while(end.indexOf(curr) == -1 && curr)
 			{
 				var nextC = src[index + 1];
 
@@ -321,7 +320,7 @@ var cparse = (function()
 					{
 						var val = [];
 						next();
-						while(curr != "\"" && curr != EOF)
+						while(curr && curr != "\"")
 						{
 							if(curr == "\\")
 							{
@@ -363,7 +362,7 @@ var cparse = (function()
 							var args = [];
 
 							skipBlanks();
-							while(src[index - 1] != ")" && curr != EOF)
+							while(src[index - 1] != ")" && curr)
 							{
 								args.push(parseExpression([",", ")"]));
 								skipBlanks();
@@ -388,7 +387,7 @@ var cparse = (function()
 				}
 			}
 
-			if(curr == EOF)
+			if(!curr)
 				unexpected(end.join(", "));
 			next();
 
@@ -467,7 +466,7 @@ var cparse = (function()
 
 		function numberIncoming()
 		{
-			return /[0-9]/.test(curr);
+			return curr && /[0-9]/.test(curr);
 		}
 		function readNumber()
 		{
@@ -477,7 +476,7 @@ var cparse = (function()
 
 		function identifierIncoming()
 		{
-			return /[A-Za-z_]/.test(curr);
+			return curr && /[A-Za-z_]/.test(curr);
 		}
 		function readIdentifier()
 		{
@@ -494,7 +493,7 @@ var cparse = (function()
 			var val = [curr];
 			next(true);
 
-			while(curr != EOF && reg.test(curr))
+			while(curr && reg.test(curr))
 			{
 				val.push(curr);
 				next(true);
@@ -509,7 +508,7 @@ var cparse = (function()
 		{
 			var line = src.substring(0, index).split("\n").length;
 			var column = index - src.lastIndexOf("\n", index) + 2;
-			var _curr = JSON.stringify(curr);
+			var _curr = JSON.stringify(curr || "EOF");
 
 			var msg = [
 				"Expecting",
@@ -562,7 +561,7 @@ var cparse = (function()
 			includeSpaces = includeSpaces || false;
 
 			index++;
-			curr = src[index] || EOF;
+			curr = src[index];
 
 			if(includeSpaces)
 				return;
@@ -573,7 +572,7 @@ var cparse = (function()
 				curr = src[index];
 			}
 
-			curr = curr || EOF;
+			curr = curr;
 		}
 	};
 })();
