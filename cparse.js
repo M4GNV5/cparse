@@ -213,7 +213,9 @@ var cparse = (function()
 
 		function parseExpression(end)
 		{
-			end = end || ";";
+			end = end || [";"];
+			end = end instanceof Array ? end : [end];
+
 			var postfix = [];
 			var opstack = [];
 
@@ -255,7 +257,7 @@ var cparse = (function()
 				opstack.unshift(op);
 			}
 
-			while(curr != end && curr != EOF)
+			while(end.indexOf(curr) == -1 && curr != EOF)
 			{
 				var nextC = src[index + 1];
 
@@ -296,7 +298,27 @@ var cparse = (function()
 					else if(identifierIncoming())
 					{
 						var val = readIdentifier();
-						postfix.push(val);
+
+						if(lookahead("("))
+						{
+							var args = [];
+
+							skipBlanks();
+							while(src[index - 1] != ")" && curr != EOF)
+							{
+								args.push(parseExpression([",", ")"]));
+								skipBlanks();
+							}
+							postfix.push({
+								type: "Call",
+								name: val,
+								arguments: args
+							});
+						}
+						else
+						{
+							postfix.push(val);
+						}
 					}
 					else
 					{
@@ -307,7 +329,9 @@ var cparse = (function()
 				}
 			}
 
-			consume(end);
+			if(curr == EOF)
+				unexpected(end.join(", "));
+			next();
 
 			for(var i = 0; i < opstack.length; i++)
 			{
@@ -484,6 +508,11 @@ var cparse = (function()
 			}
 
 			curr = curr || EOF;
+		}
+
+		function escapeRegExp(str)
+		{
+			return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
 		}
 	};
 })();
