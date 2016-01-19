@@ -583,5 +583,5 @@ var cparse = (function()
 	};
 })();
 
-if(module)
+if(typeof module == "object")
 	module.exports = cparse;
