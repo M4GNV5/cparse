@@ -61,6 +61,20 @@ var cparse = (function()
 		"--": 13 //suffixed --
 	}
 
+	const stringEscapes = {
+		"a": "\a",
+		"b": "\b",
+		"f": "\f",
+		"n": "\n",
+		"r": "\r",
+		"t": "\t",
+		"v": "\v",
+		"\\": "\\",
+		"'": "'",
+		"\"": "\"",
+		"?": "\?"
+	};
+
 	return function(src)
 	{
 		var index = 0;
@@ -284,6 +298,35 @@ var cparse = (function()
 						var expr = parseExpression("]", true);
 						postfix = postfix.concat(expr.postfix);
 						postfix.push("[]");
+					}
+					else if(curr == "\"")
+					{
+						var val = [];
+						next();
+						while(curr != "\"" && curr != EOF)
+						{
+							if(curr == "\\")
+							{
+								next(true);
+								if(!stringEscapes[curr])
+									unexpected("escape sequence");
+								val.push(stringEscapes[curr]);
+							}
+							else
+							{
+								val.push(curr);
+							}
+							next(true);
+						}
+
+						if(curr != "\"")
+							unexpected("\"");
+						next();
+
+						postfix.push({
+							type: "Literal",
+							value: val.join("")
+						});
 					}
 					else if(!wasOp)
 					{
