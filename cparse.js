@@ -287,7 +287,7 @@ var cparse = (function()
 					}
 					else if(!wasOp)
 					{
-						unexpected("Operator ");
+						unexpected("Operator");
 					}
 					else if(numberIncoming())
 					{
