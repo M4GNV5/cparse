@@ -504,10 +504,19 @@ var cparse = (function()
 			return val.join("");
 		}
 
+		function getPos(i)
+		{
+			i = i || index;
+			var pos = {
+				line: src.substring(0, index).split("\n").length,
+				column: index - src.lastIndexOf("\n", index)
+			};
+			return pos;
+		}
+
 		function unexpected(expected)
 		{
-			var line = src.substring(0, index).split("\n").length;
-			var column = index - src.lastIndexOf("\n", index) + 2;
+			var pos = getPos();
 			var _curr = JSON.stringify(curr || "EOF");
 
 			var msg = [
@@ -516,9 +525,9 @@ var cparse = (function()
 				"got",
 				_curr,
 				"at line",
-				line,
+				pos.line,
 				"column",
-				column
+				pos.column
 			].join(" ");
 			throw new Error(msg);
 		}
