@@ -105,17 +105,15 @@ var cparse = (function()
 						}
 						stmts.push(def);
 					}
-					else if(lookahead("=")) // global variable definition
+					else // global variable definition
 					{
-						var val = parseExpression(";");
-						stmts.push({
-							type: "GlobalVariableDeclaration",
-							modifier: def.modifier,
-							valueType: def.type,
-							pointer: def.ptr,
-							name: def.name,
-							value: val
-						});
+						if(lookahead("="))
+							def.value = parseExpression(";");
+						else
+							consume(";");
+
+						def.type = "GlobalVariableDeclaration";
+						stmts.push(def);
 					}
 				}
 				else
@@ -211,7 +209,7 @@ var cparse = (function()
 			}
 		}
 
-		function parseExpression(end)
+		function parseExpression(end, forcePostfix)
 		{
 			end = end || [";"];
 			end = end instanceof Array ? end : [end];
@@ -277,13 +275,13 @@ var cparse = (function()
 					if(curr == "(")
 					{
 						next();
-						var expr = parseExpression(")");
+						var expr = parseExpression(")", true);
 						postfix = postfix.concat(expr.postfix);
 					}
 					else if(curr == "[")
 					{
 						next();
-						var expr = parseExpression("]");
+						var expr = parseExpression("]", true);
 						postfix = postfix.concat(expr.postfix);
 						postfix.push("[]");
 					}
@@ -338,10 +336,17 @@ var cparse = (function()
 				postfix.push(opstack[i]);
 			}
 
-			return {
-				type: "Expression",
-				postfix: postfix
-			};
+			if(postfix.length == 1 && !forcePostfix)
+			{
+				if(typeof postfix[0] == "object")
+					return postfix[0];
+				else if(typeof postfix[0] == "string")
+					return {type: "Identifier", value: postfix[0]};
+				else if(typeof postfix[0] == "number")
+					return {type: "Literal", value: postfix[0]};
+			}
+
+			return {type: "Expression", postfix: postfix};
 		}
 
 		function definitionIncoming()
