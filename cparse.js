@@ -326,6 +326,18 @@ var cparse = (function()
 							value: entries
 						});
 					}
+					else if(lookahead("'"))
+					{
+						var val = curr.charCodeAt(0);
+						next(true);
+						consume("'");
+
+						postfix.push({
+							type: "Literal",
+							source: "CharCode",
+							value: val
+						});
+					}
 					else if(stringIncoming())
 					{
 						postfix.push({
