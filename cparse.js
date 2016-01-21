@@ -487,7 +487,7 @@ var cparse = (function()
 			var def = {
 				type: "Definition",
 				modifier: [],
-				ptr: 0
+				pointer: 0
 			};
 
 			while(identifierIncoming())
@@ -497,10 +497,10 @@ var cparse = (function()
 
 			if(lookahead("*"))
 			{
-				def.ptr = 1;
+				def.pointer = 1;
 				while(lookahead("*"))
 				{
-					def.ptr++;
+					def.pointer++;
 				}
 				def.name = readIdentifier();
 			}
@@ -508,6 +508,9 @@ var cparse = (function()
 			{
 				def.name = def.modifier.splice(def.modifier.length - 1, 1)[0];
 			}
+
+			while(lookahead("[]"))
+				def.pointer++;
 
 			if(def.modifier.length == 0)
 				unexpected("Type");

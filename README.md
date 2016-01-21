@@ -35,7 +35,7 @@ outputs following AST:
     {
         "type": "GlobalVariableDeclaration",
         "modifier": [],
-        "ptr": 0,
+        "pointer": 0,
         "name": "answer",
         "valueType": "int",
         "value": {
