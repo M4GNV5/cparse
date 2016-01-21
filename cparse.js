@@ -13,8 +13,8 @@ var cparse = (function()
 		"^=": 1,
 		"|=": 1,
 
-		/*"?": 2, //ternary
-		":": 2, //ternary*/
+		"?": 2, //ternary
+		":": 2, //ternary
 
 		"||": 3,
 		"&&": 4,
@@ -442,12 +442,16 @@ var cparse = (function()
 
 			function opArgCount(op)
 			{
-				if(ops[op])
+				if(op == "?")
+					return 3;
+				else if(ops[op])
 					return 2;
 				else if(op.type == "SuffixOperator" || op.type == "PrefixOperator" || op.type == "IndexExpression")
 					return 1;
 				return 0;
 			}
+
+			console.dir(postfix);
 
 			function toTree()
 			{
@@ -465,6 +469,17 @@ var cparse = (function()
 					ast = {type: "BinaryExpression", operator: ast};
 					ast.right = toTree();
 					ast.left = toTree();
+				}
+				else if(count == 3)
+				{
+					ast = {type: "TernaryExpression"};
+					if(postfix[i] != ":")
+						throw new Error("Error parsing ternary expression");
+					i++;
+					
+					ast.right = toTree();
+					ast.left = toTree();
+					ast.condition = toTree();
 				}
 
 				return ast;
