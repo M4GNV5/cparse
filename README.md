@@ -39,12 +39,16 @@ outputs following AST:
         "name": "answer",
         "valueType": "int",
         "value": {
-            "type": "Expression",
-            "postfix": [
-                6,
-                7,
-                "*"
-            ]
+            "type": "BinaryExpression",
+            "operator": "*",
+            "right": {
+                "type": "Literal",
+                "value": 7
+            },
+            "left": {
+                "type": "Literal",
+                "value": 6
+            }
         }
     }
 ]

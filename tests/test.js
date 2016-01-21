@@ -1,6 +1,6 @@
 var fs = require("fs");
 var parse = require("./../cparse.js");
-var files = ["./simple.c"];
+var files = ["./simple.c", "./readme.c"];
 
 for(var i = 0; i < files.length; i++)
 {

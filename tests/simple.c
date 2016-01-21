@@ -1,13 +1,11 @@
-int *answer = &(6 * 7);
-
-void **add(int *a, int *b);
-
 void main()
 {
-
-}
-
-void **add(int *a, int *b)
-{
-
+	a = 6 * 7;
+	b = foo(42, 666);
+	c = bar();
+	d = {42, 666, 1337, 3112};
+	e = "hello";
+	g = foo[1];
+	h = foo->bar * foo.bar;
+	i = sizeof f;
 }

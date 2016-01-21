@@ -40,8 +40,8 @@ var cparse = (function()
 		"/": 11,
 		"%": 11,
 
-		/*".": 9, //structure member access
-		"->": 9 //structure pointer member access*/
+		".": 13, //structure member access
+		"->": 13 //structure pointer member access
 	};
 
 	const prefixedOps = {
@@ -53,6 +53,7 @@ var cparse = (function()
 		"-": 12, //unary -
 		"++": 12, //prefixed ++
 		"--": 12, //prefixed --
+		"sizeof": 12
 	}
 
 	const suffixedOps = {
@@ -241,7 +242,7 @@ var cparse = (function()
 			}
 		}
 
-		function parseExpression(end, forcePostfix)
+		function parseExpression(end)
 		{
 			end = end || [";"];
 			end = end instanceof Array ? end : [end];
@@ -251,12 +252,6 @@ var cparse = (function()
 
 			var wasOp = true;
 
-			function isOp(op)
-			{
-				if(ops[op] || prefixedOps[op] || suffixedOps[op])
-					return true;
-				return false;
-			}
 			function getPrecendence(op)
 			{
 				if(typeof op == "string")
@@ -272,8 +267,6 @@ var cparse = (function()
 					op = {type: "PrefixOperator", operator: op};
 				else if(!wasOp && suffixedOps[op])
 					op = {type: "SuffixOperator", operator: op};
-				else if(wasOp)
-					unexpected("Number or unary Operator");
 				else
 					wasOp = true;
 
@@ -287,72 +280,65 @@ var cparse = (function()
 				opstack.unshift(op);
 			}
 
+			var _ops = Object.keys(ops);
+			_ops.sort(function(a, b)
+			{
+				return b.length - a.length;
+			});
+
 			while(end.indexOf(curr) == -1 && curr)
 			{
-				var nextC = src[index + 1];
-
-				if(isOp(curr + nextC))
+				if(wasOp)
 				{
-					handleOp(curr + nextC);
-					next();
-					next();
-				}
-				else if(isOp(curr))
-				{
-					handleOp(curr);
-					next();
-				}
-				else
-				{
-					if(curr == "(")
+					var isPrefixOp = false;
+					for(var op in prefixedOps)
 					{
-						next();
-						var expr = parseExpression(")", true);
-						postfix = postfix.concat(expr.postfix);
-					}
-					else if(curr == "[")
-					{
-						next();
-						var expr = parseExpression("]", true);
-						postfix = postfix.concat(expr.postfix);
-						postfix.push("[]");
-					}
-					else if(curr == "\"")
-					{
-						var val = [];
-						next();
-						while(curr && curr != "\"")
+						if(lookahead(op))
 						{
-							if(curr == "\\")
-							{
-								next(true);
-								if(!stringEscapes[curr])
-									unexpected("escape sequence");
-								val.push(stringEscapes[curr]);
-							}
-							else
-							{
-								val.push(curr);
-							}
-							next(true);
+							handleOp(op);
+							isPrefixOp = true;
+							break;
 						}
+					}
+					if(isPrefixOp)
+						continue;
 
-						if(curr != "\"")
-							unexpected("\"");
-						next();
+					if(lookahead("("))
+					{
+						var expr = parseExpression(")");
+						postfix = postfix.concat(expr);
+					}
+					else if(lookahead("{"))
+					{
+						var entries = [];
+
+						if(!lookahead("}"))
+						{
+							while(curr && src[index - 1] != "}")
+							{
+								entries.push(parseExpression([",", "}"]));
+								skipBlanks();
+							}
+						}
 
 						postfix.push({
 							type: "Literal",
-							value: val.join("")
+							value: entries
 						});
 					}
-					else if(!wasOp)
+					else if(stringIncoming())
 					{
-						unexpected("Operator");
+						postfix.push({
+							type: "Literal",
+							value: readString()
+						});
 					}
 					else if(numberIncoming())
 					{
-						postfix.push(readNumber());
+						postfix.push({
+							type: "Literal",
+							value: readNumber()
+						});
 					}
 					else if(identifierIncoming())
 					{
@@ -361,30 +347,72 @@ var cparse = (function()
 						if(lookahead("("))
 						{
 							var args = [];
-
 							skipBlanks();
-							while(src[index - 1] != ")" && curr)
+
+							if(!lookahead(")"))
 							{
-								args.push(parseExpression([",", ")"]));
-								skipBlanks();
+								while(curr && src[index - 1] != ")")
+								{
+									args.push(parseExpression([",", ")"]));
+									skipBlanks();
+								}
 							}
+
 							postfix.push({
-								type: "Call",
+								type: "CallExpression",
 								name: val,
 								arguments: args
 							});
 						}
 						else
 						{
-							postfix.push(val);
+							postfix.push({
+								type: "Identifier",
+								value: val
+							});
 						}
 					}
 					else
 					{
-						unexpected("Expression");
+						unexpected("Number or unary Operator");
 					}
 
 					wasOp = false;
+				}
+				else
+				{
+					(function()
+					{
+						if(lookahead("["))
+						{
+							var expr = parseExpression("]");
+							postfix.push({
+								type: "IndexExpression",
+								index: expr
+							});
+							return;
+						}
+
+						for(var op in suffixedOps)
+						{
+							if(lookahead(op))
+							{
+								handleOp(op);
+								return;
+							}
+						}
+
+						for(var i = 0; i < _ops.length; i++)
+						{
+							if(lookahead(_ops[i]))
+							{
+								handleOp(_ops[i]);
+								return;
+							}
+						}
+
+						unexpected("Operator");
+					})();
 				}
 			}
 
@@ -397,17 +425,40 @@ var cparse = (function()
 				postfix.push(opstack[i]);
 			}
 
-			if(postfix.length == 1 && !forcePostfix)
+			postfix.reverse();
+			var i = 0;
+
+			function opArgCount(op)
 			{
-				if(typeof postfix[0] == "object")
-					return postfix[0];
-				else if(typeof postfix[0] == "string")
-					return {type: "Identifier", value: postfix[0]};
-				else if(typeof postfix[0] == "number")
-					return {type: "Literal", value: postfix[0]};
+				if(ops[op])
+					return 2;
+				else if(op.type == "SuffixOperator" || op.type == "PrefixOperator" || op.type == "IndexExpression")
+					return 1;
+				return 0;
 			}
 
-			return {type: "Expression", postfix: postfix};
+			function toTree()
+			{
+				var count = opArgCount(postfix[i]);
+				var ast = postfix[i];
+				i++;
+
+				if(count == 1)
+				{
+					ast.type = ast.type.replace("Operator", "Expression");
+					ast.value = toTree();
+				}
+				else if(count == 2)
+				{
+					ast = {type: "BinaryExpression", operator: ast};
+					ast.right = toTree();
+					ast.left = toTree();
+				}
+
+				return ast;
+			}
+
+			return toTree();
 		}
 
 		function definitionIncoming()
@@ -463,6 +514,36 @@ var cparse = (function()
 			def.valueType = def.modifier.splice(def.modifier.length - 1, 1)[0];
 
 			return def;
+		}
+
+		function stringIncoming()
+		{
+			return curr && curr == "\"";
+		}
+		function readString()
+		{
+			var val = [];
+			next();
+			while(curr && curr != "\"")
+			{
+				if(curr == "\\")
+				{
+					next(true);
+					if(!stringEscapes[curr])
+						unexpected("escape sequence");
+					val.push(stringEscapes[curr]);
+				}
+				else
+				{
+					val.push(curr);
+				}
+				next(true);
+			}
+
+			if(!lookahead("\""))
+				unexpected("\"");
+
+			return val.join("");
 		}
 
 		function numberIncoming()
