@@ -91,7 +91,19 @@ var cparse = (function()
 				skipBlanks();
 				if(lookahead("struct"))
 				{
-					throw "structs not yet supported";
+					var stmt = {type: "StructDefinition", member: []};
+					stmt.name = readIdentifier();
+					consume("{");
+
+					while(definitionIncoming())
+					{
+						var def = readDefinition();
+						stmt.member.push(def);
+						consume(";");
+					}
+
+					consume("}");
+					stmts.push(stmt);
 				}
 				else if(lookahead("enum"))
 				{
@@ -476,7 +488,7 @@ var cparse = (function()
 					if(postfix[i] != ":")
 						throw new Error("Error parsing ternary expression");
 					i++;
-					
+
 					ast.right = toTree();
 					ast.left = toTree();
 					ast.condition = toTree();
