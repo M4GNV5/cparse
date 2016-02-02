@@ -1,11 +1,13 @@
-void main()
+struct person
 {
-	a = 6 * 7;
-	b = foo(42, 666);
-	c = bar();
-	d = {42, 666, 1337, 3112};
-	e = "hello";
-	g = foo[1];
-	h = foo->bar * foo.bar;
-	i = sizeof f;
+	const char *sex;
+	char *name;
+	int age;
+}
+
+const char *main()
+{
+	int x = x > 5 ? 0 : x++;
+	const char msg[] = "hello";
+	char msg2[] = {'h', 'i'};
 }

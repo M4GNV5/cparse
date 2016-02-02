@@ -45,21 +45,27 @@ var cparse = (function()
 	};
 
 	const prefixedOps = {
+		"++": 12, //prefixed ++
+		"--": 12, //prefixed --
 		"!": 12, //logical NOT
 		"~": 12, //bitwise NOT
 		"&": 12, //adress of
 		"*": 12, //dereference
 		"+": 12, //unary +
 		"-": 12, //unary -
-		"++": 12, //prefixed ++
-		"--": 12, //prefixed --
 		"sizeof": 12
-	}
+	};
 
 	const suffixedOps = {
 		"++": 13, //suffixed ++
 		"--": 13 //suffixed --
-	}
+	};
+
+	const rightToLeftAssociativity = {
+		"1": true,
+		"2": true,
+		"12": true
+	};
 
 	const stringEscapes = {
 		"a": "\a",
@@ -283,7 +289,9 @@ var cparse = (function()
 					wasOp = true;
 
 				var prec = getPrecendence(op);
-				while(opstack[0] && getPrecendence(opstack[0]) > prec)
+				if(rightToLeftAssociativity[prec])
+					prec++;
+				while(opstack[0] && getPrecendence(opstack[0]) >= prec)
 				{
 					postfix.push(opstack[0]);
 					opstack.splice(0, 1);
@@ -421,6 +429,7 @@ var cparse = (function()
 						{
 							if(lookahead(op))
 							{
+								console.log(op);
 								handleOp(op);
 								return;
 							}
@@ -462,8 +471,6 @@ var cparse = (function()
 					return 1;
 				return 0;
 			}
-
-			console.dir(postfix);
 
 			function toTree()
 			{
