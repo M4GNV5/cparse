@@ -585,12 +585,12 @@ var cparse = (function()
 		function readString()
 		{
 			var val = [];
-			next(true);
+			next(true, true);
 			while(curr && curr != "\"")
 			{
 				if(curr == "\\")
 				{
-					next(true);
+					next(true, true);
 					if(!stringEscapes[curr])
 						unexpected("escape sequence");
 					val.push(stringEscapes[curr]);
@@ -599,7 +599,7 @@ var cparse = (function()
 				{
 					val.push(curr);
 				}
-				next(true);
+				next(true, true);
 			}
 
 			if(!lookahead("\""))
@@ -709,23 +709,59 @@ var cparse = (function()
 				next();
 		}
 
-		function next(includeSpaces)
+		function next(includeSpaces, includeComments)
 		{
 			includeSpaces = includeSpaces || false;
 
 			index++;
 			curr = src[index];
 
-			if(includeSpaces)
-				return;
-
-			while(curr && /[\s\n]/.test(curr))
+			do
 			{
-				index++;
-				curr = src[index];
+				var skipped = skipComments() || skipSpaces();
+			} while(skipped);
+
+			function skipSpaces()
+			{
+				if(includeSpaces)
+					return;
+
+				if(/[\s\n]/.test(curr))
+				{
+					while(curr && /[\s\n]/.test(curr))
+					{
+						index++;
+						curr = src[index];
+					}
+					return true;
+				}
 			}
 
-			curr = curr;
+			function skipComments()
+			{
+				if(includeComments)
+					return;
+				if(curr && curr == "/" && src[index + 1] == "/")
+				{
+					while(curr != "\n")
+					{
+						index++;
+						curr = src[index];
+					}
+					return true;
+				}
+				if(curr && curr == "/" && src[index + 1] == "*")
+				{
+					while(curr != "*" || src[index + 1] != "/")
+					{
+						index++;
+						curr = src[index];
+					}
+					index += 2;
+					curr = src[index];
+					return true;
+				}
+			}
 		}
 	};
 })();
