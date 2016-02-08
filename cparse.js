@@ -363,7 +363,10 @@ var cparse = (function()
 					else if(lookahead("'"))
 					{
 						var val = curr.charCodeAt(0);
-						next(true);
+						if(curr == "\\")
+							val = readEscapeSequence().charCodeAt(0);
+						else
+							next(true, true);
 						consume("'");
 
 						postfix.push({
@@ -591,21 +594,53 @@ var cparse = (function()
 				if(curr == "\\")
 				{
 					next(true, true);
-					if(!stringEscapes[curr])
-						unexpected("escape sequence");
-					val.push(stringEscapes[curr]);
+					val.push(readEscapeSequence());
 				}
 				else
 				{
 					val.push(curr);
+					next(true, true);
 				}
-				next(true, true);
 			}
 
 			if(!lookahead("\""))
 				unexpected("\"");
 
 			return val.join("");
+		}
+		function readEscapeSequence()
+		{
+			if(curr == "x")
+			{
+				next(true, true);
+				var val = 0;
+				while(/[0-9A-Fa-f]/.test(curr))
+				{
+					val = (val << 4) + parseInt(curr, 16);
+					next(true, true);
+				}
+
+				return String.fromCharCode(val);
+			}
+			else if(/[0-7]/.test(curr))
+			{
+				var val = 0;
+				while(/[0-7]/.test(curr))
+				{
+					val = (val << 3) + parseInt(curr, 16);
+					next(true, true);
+				}
+
+				return String.fromCharCode(val);
+			}
+			else if(stringEscapes[curr])
+			{
+				var escape = stringEscapes[curr];
+				next(true, true);
+				return escape;
+			}
+
+			unexpected("escape sequence");
 		}
 
 		function numberIncoming()
