@@ -81,10 +81,12 @@ var cparse = (function()
 		"?": "\?"
 	};
 
-	return function(src)
+	return function(src, options)
 	{
 		var index = 0;
 		var curr = src[index];
+
+		options = options || {};
 
 		return parseRoot();
 
@@ -94,11 +96,17 @@ var cparse = (function()
 
 			while(curr)
 			{
+				var pos = getPos();
+
 				skipBlanks();
 				if(lookahead("struct"))
 				{
 					var stmt = {type: "StructDefinition", member: []};
 					stmt.name = readIdentifier();
+
+					if(options.position)
+						stmt.pos = pos;
+
 					consume("{");
 
 					while(definitionIncoming())
@@ -122,6 +130,8 @@ var cparse = (function()
 				else if(definitionIncoming())
 				{
 					var def = readDefinition();
+					if(options.position)
+						def.pos = pos;
 
 					if(lookahead("(")) //function definition
 					{
@@ -180,7 +190,11 @@ var cparse = (function()
 
 			while(!(curr == "}" || !curr))
 			{
-				stmts.push(parseStatement());
+				var pos = getPos();
+				var stmt = parseStatement();
+				if(options.position)
+					stmt.pos = pos;
+				stmts.push(stmt);
 			}
 
 			consume("}");
@@ -429,7 +443,6 @@ var cparse = (function()
 						{
 							if(lookahead(op))
 							{
-								console.log(op);
 								handleOp(op);
 								return;
 							}
@@ -572,7 +585,7 @@ var cparse = (function()
 		function readString()
 		{
 			var val = [];
-			next();
+			next(true);
 			while(curr && curr != "\"")
 			{
 				if(curr == "\\")
