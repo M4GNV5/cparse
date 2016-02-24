@@ -86,12 +86,30 @@ var cparse = (function()
 		"?": "\?"
 	};
 
+	const defaultTypeNames = ["void", "char", "short", "int", "long", "float", "double"];
+	const defaultTypeModifier = ["signed", "unsigned", "short", "long", "const"];
+
 	return function(src, options)
 	{
 		var index = 0;
 		var curr = src[index];
 
 		options = options || {};
+		var typeNames = options.types || defaultTypeNames.slice(0);
+		var typeModifier = options.modifier || defaultTypeModifier.slice(0);
+
+		function sortTypeStrings()
+		{
+			typeNames.sort(function(a, b)
+			{
+				return b.length - a.length;
+			});
+			typeModifier.sort(function(a, b)
+			{
+				return b.length - a.length;
+			});
+		}
+		sortTypeStrings();
 
 		return parseRoot();
 
@@ -130,7 +148,14 @@ var cparse = (function()
 				}
 				else if(lookahead("typedef"))
 				{
-					throw "typedef not yet supported";
+					var def = readDefinition();
+					def.type = "TypeDefStatement";
+
+					typeNames.push(def.name);
+					sortTypeStrings();
+					consume(";");
+
+					stmts.push(def);
 				}
 				else if(definitionIncoming())
 				{
@@ -345,7 +370,19 @@ var cparse = (function()
 
 			if(lookahead("("))
 			{
-				expr = parseExpression(")");
+				if(definitionIncoming())
+				{
+					expr = {
+						type: "CastExpression",
+						typeDef: readDefinition(true),
+					};
+					consume(")");
+					expr.value = parseUnary()
+				}
+				else
+				{
+					expr = parseExpression(")");
+				}
 			}
 			else if(lookahead("{"))
 			{
@@ -455,26 +492,27 @@ var cparse = (function()
 
 		function definitionIncoming()
 		{
-			if(identifierIncoming())
+			var _index = index;
+			for(var i = 0; i < typeModifier.length; i++)
 			{
-				var _index = index;
-
-				readIdentifier();
-				while(lookahead("*"))
-				{}
-				if(identifierIncoming())
+				if(lookahead(typeModifier[i]))
 				{
 					index = _index;
 					curr = src[index];
 					return true;
 				}
-
-				index = _index;
-				curr = src[index];
 			}
-			return false;
+			for(var i = 0; i < typeNames.length; i++)
+			{
+				if(lookahead(typeNames[i]))
+				{
+					index = _index;
+					curr = src[index];
+					return true;
+				}
+			}
 		}
-		function readDefinition()
+		function readDefinition(nameless)
 		{
 			var def = {
 				type: "Definition",
@@ -482,33 +520,42 @@ var cparse = (function()
 				pointer: 0
 			};
 
-			while(identifierIncoming())
+			do
 			{
-				def.modifier.push(readIdentifier());
-			}
-
-			if(lookahead("*"))
-			{
-				def.pointer = 1;
-				while(lookahead("*"))
+				var read = false;
+				for(var i = 0; i < typeModifier.length; i++)
 				{
-					def.pointer++;
+					if(lookahead(typeModifier[i]))
+					{
+						def.modifier.push(typeModifier[i]);
+						read = true;
+					}
 				}
-				def.name = readIdentifier();
-			}
-			else
+			} while(read);
+
+			for(var i = 0; i < typeNames.length; i++)
 			{
-				def.name = def.modifier.splice(def.modifier.length - 1, 1)[0];
+				if(lookahead(typeNames[i]))
+				{
+					def.typeName = typeNames[i];
+
+					while(lookahead("*"))
+					{
+						def.pointer++;
+					}
+
+					if(!nameless)
+						def.name = readIdentifier();
+
+					while(lookahead("[]")) //TODO [length]
+					{
+						def.pointer++;
+					}
+
+					return def;
+				}
 			}
-
-			while(lookahead("[]"))
-				def.pointer++;
-
-			if(def.modifier.length == 0)
-				unexpected("Type");
-			def.valueType = def.modifier.splice(def.modifier.length - 1, 1)[0];
-
-			return def;
+			unexpected(typeNames.join(", "));
 		}
 
 		function stringIncoming()
@@ -654,6 +701,14 @@ var cparse = (function()
 				}
 				next(true);
 			}
+
+			if(/^[_a-zA-Z][_a-zA-Z0-9]*$/.test(str) && /[_a-zA-Z]/.test(curr))
+			{
+				index = _index;
+				curr = src[index];
+				return false;
+			}
+
 			skipBlanks();
 			return true;
 		}
