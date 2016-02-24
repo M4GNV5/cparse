@@ -484,7 +484,7 @@ var cparse = (function()
 
 				while(curr)
 				{
-					entries.push(parseExpression());
+					args.push(parseExpression());
 
 					if(!lookahead(","))
 						break;
