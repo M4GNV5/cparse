@@ -87,7 +87,7 @@ var cparse = (function()
 	};
 
 	const defaultTypeNames = ["void", "char", "short", "int", "long", "float", "double"];
-	const defaultTypeModifier = ["signed", "unsigned", "short", "long", "const"];
+	const defaultTypeModifier = ["signed", "unsigned", "short", "long", "const", "struct", "enum"];
 
 	return function(src, options)
 	{
@@ -140,11 +140,34 @@ var cparse = (function()
 					}
 
 					consume("}");
+
+					typeNames.push(stmt.name);
+					sortTypeStrings();
 					stmts.push(stmt);
 				}
 				else if(lookahead("enum"))
 				{
-					throw "enums not yet supported";
+					var stmt = {type: "EnumDefinition", member: []};
+					stmt.name = readIdentifier();
+
+					if(options.position)
+						stmt.pos = pos;
+
+					consume("{");
+
+					while(identifierIncoming())
+					{
+						stmt.member.push(readIdentifier());
+
+						if(!lookahead(","))
+							break;
+					}
+
+					consume("}");
+
+					typeNames.push(stmt.name);
+					sortTypeStrings();
+					stmts.push(stmt);
 				}
 				else if(lookahead("typedef"))
 				{
