@@ -43,6 +43,11 @@ var cparse = (function()
 		".": 13, //structure member access
 		"->": 13 //structure pointer member access
 	};
+	var sortedOps = Object.keys(ops);
+	sortedOps.sort(function(a, b)
+	{
+		return b.length - a.length;
+	});
 
 	const prefixedOps = {
 		"++": 12, //prefixed ++
@@ -276,251 +281,176 @@ var cparse = (function()
 
 		function parseExpression(end)
 		{
-			end = end || [";"];
-			end = end instanceof Array ? end : [end];
+			var expr = parseBinary(parseUnary(), 0);
+			if(end)
+				consume(end);
+			return expr;
+		}
 
-			var postfix = [];
-			var opstack = [];
-
-			var wasOp = true;
-
-			function getPrecendence(op)
+		function peekBinaryOp()
+		{
+			var _index = index;
+			for(var i = 0; i < sortedOps.length; i++)
 			{
-				if(typeof op == "string")
-					return ops[op];
-				else if(typeof op == "object" && op.type == "PrefixOperator")
-					return prefixedOps[op.operator];
-				else if(typeof op == "object" && op.type == "SuffixOperator")
-					return suffixedOps[op.operator];
+				if(lookahead(sortedOps[i]))
+				{
+					index = _index;
+					curr = src[index];
+					return sortedOps[i];
+				}
 			}
-			function handleOp(op)
+		}
+
+		function parseBinary(left, minPrec)
+		{
+			var ahead = peekBinaryOp();
+			while(ahead && ops[ahead] >= minPrec)
 			{
-				if(wasOp && prefixedOps[op])
-					op = {type: "PrefixOperator", operator: op};
-				else if(!wasOp && suffixedOps[op])
-					op = {type: "SuffixOperator", operator: op};
+				var op = ahead;
+				consume(op);
+				var right = parseUnary();
+				ahead = peekBinaryOp();
+
+				while(ahead && ops[ahead] > ops[op])
+				{
+					right = parseBinary(right, ops[ahead]);
+					ahead = peekBinaryOp();
+				}
+
+				left = {
+					type: "BinaryExpression",
+					operator: op,
+					left: left,
+					right: right
+				};
+			}
+			return left;
+		}
+
+		function parseUnary()
+		{
+			var expr;
+
+			for(var op in prefixedOps)
+			{
+				if(lookahead(op))
+				{
+					return {
+						type: "PrefixExpression",
+						operator: op,
+						value: parseUnary()
+					};
+				}
+			}
+
+			if(lookahead("("))
+			{
+				expr = parseExpression(")");
+			}
+			else if(lookahead("{"))
+			{
+				var entries = [];
+
+				while(curr)
+				{
+					entries.push(parseExpression());
+
+					if(!lookahead(","))
+						break;
+				}
+				consume("}");
+
+				expr = {
+					type: "Literal",
+					value: entries
+				};
+			}
+			else if(lookahead("'"))
+			{
+				var val = curr.charCodeAt(0);
+				if(curr == "\\")
+					val = readEscapeSequence().charCodeAt(0);
 				else
-					wasOp = true;
+					next(true, true);
+				consume("'");
 
-				var prec = getPrecendence(op);
-				if(rightToLeftAssociativity[prec])
-					prec++;
-				while(opstack[0] && getPrecendence(opstack[0]) >= prec)
-				{
-					postfix.push(opstack[0]);
-					opstack.splice(0, 1);
-				}
-
-				opstack.unshift(op);
+				expr = {
+					type: "Literal",
+					source: "CharCode",
+					value: val
+				};
+			}
+			else if(stringIncoming())
+			{
+				expr = {
+					type: "Literal",
+					value: readString()
+				};
+			}
+			else if(numberIncoming())
+			{
+				expr = {
+					type: "Literal",
+					value: readNumber()
+				};
+			}
+			else if(identifierIncoming())
+			{
+				var val = readIdentifier();
+				expr = {
+					type: "Identifier",
+					value: val
+				};
+			}
+			else
+			{
+				return;
 			}
 
-			var _ops = Object.keys(ops);
-			_ops.sort(function(a, b)
+			if(lookahead("["))
 			{
-				return b.length - a.length;
-			});
+				var index = parseExpression();
+				consume("]");
 
-			while(end.indexOf(curr) == -1 && curr)
+				expr = {
+					type: "IndexExpression",
+					value: expr,
+					index: index
+				};
+			}
+			else if(lookahead("("))
 			{
-				if(wasOp)
+				var args = [];
+
+				while(curr)
 				{
-					var isPrefixOp = false;
-					for(var op in prefixedOps)
-					{
-						if(lookahead(op))
-						{
-							handleOp(op);
-							isPrefixOp = true;
-							break;
-						}
-					}
-					if(isPrefixOp)
-						continue;
+					entries.push(parseExpression());
 
-					if(lookahead("("))
-					{
-						var expr = parseExpression(")");
-						postfix = postfix.concat(expr);
-					}
-					else if(lookahead("{"))
-					{
-						var entries = [];
-
-						if(!lookahead("}"))
-						{
-							while(curr && src[index - 1] != "}")
-							{
-								entries.push(parseExpression([",", "}"]));
-								skipBlanks();
-							}
-						}
-
-						postfix.push({
-							type: "Literal",
-							value: entries
-						});
-					}
-					else if(lookahead("'"))
-					{
-						var val = curr.charCodeAt(0);
-						if(curr == "\\")
-							val = readEscapeSequence().charCodeAt(0);
-						else
-							next(true, true);
-						consume("'");
-
-						postfix.push({
-							type: "Literal",
-							source: "CharCode",
-							value: val
-						});
-					}
-					else if(stringIncoming())
-					{
-						postfix.push({
-							type: "Literal",
-							value: readString()
-						});
-					}
-					else if(numberIncoming())
-					{
-						postfix.push({
-							type: "Literal",
-							value: readNumber()
-						});
-					}
-					else if(identifierIncoming())
-					{
-						var val = readIdentifier();
-
-						if(lookahead("("))
-						{
-							var args = [];
-							skipBlanks();
-
-							if(!lookahead(")"))
-							{
-								while(curr && src[index - 1] != ")")
-								{
-									args.push(parseExpression([",", ")"]));
-									skipBlanks();
-								}
-							}
-
-							postfix.push({
-								type: "CallExpression",
-								name: val,
-								arguments: args
-							});
-						}
-						else
-						{
-							postfix.push({
-								type: "Identifier",
-								value: val
-							});
-						}
-					}
-					else
-					{
-						unexpected("Number or unary Operator");
-					}
-
-					wasOp = false;
+					if(!lookahead(","))
+						break;
 				}
-				else
+				consume(")");
+
+				expr = {
+					type: "CallExpression",
+					base: expr,
+					arguments: args
+				};
+			}
+
+			for(var op in suffixedOps)
+			{
+				if(lookahead(op))
 				{
-					(function()
-					{
-						if(lookahead("["))
-						{
-							var expr = parseExpression("]");
-							postfix.push({
-								type: "IndexExpression",
-								index: expr
-							});
-							return;
-						}
-
-						for(var op in suffixedOps)
-						{
-							if(lookahead(op))
-							{
-								handleOp(op);
-								return;
-							}
-						}
-
-						for(var i = 0; i < _ops.length; i++)
-						{
-							if(lookahead(_ops[i]))
-							{
-								handleOp(_ops[i]);
-								return;
-							}
-						}
-
-						unexpected("Operator");
-					})();
+					return {
+						type: "SuffixExpression",
+						operator: op,
+						value: expr
+					};
 				}
 			}
 
-			if(!curr)
-				unexpected(end.join(", "));
-			next();
-
-			for(var i = 0; i < opstack.length; i++)
-			{
-				postfix.push(opstack[i]);
-			}
-
-			postfix.reverse();
-			var i = 0;
-
-			function opArgCount(op)
-			{
-				if(op == "?")
-					return 3;
-				else if(ops[op])
-					return 2;
-				else if(op.type == "SuffixOperator" || op.type == "PrefixOperator" || op.type == "IndexExpression")
-					return 1;
-				return 0;
-			}
-
-			function toTree()
-			{
-				var count = opArgCount(postfix[i]);
-				var ast = postfix[i];
-				i++;
-
-				if(count == 1)
-				{
-					ast.type = ast.type.replace("Operator", "Expression");
-					ast.value = toTree();
-				}
-				else if(count == 2)
-				{
-					ast = {type: "BinaryExpression", operator: ast};
-					ast.right = toTree();
-					ast.left = toTree();
-				}
-				else if(count == 3)
-				{
-					ast = {type: "TernaryExpression"};
-					if(postfix[i] != ":")
-						throw new Error("Error parsing ternary expression");
-					i++;
-
-					ast.right = toTree();
-					ast.left = toTree();
-					ast.condition = toTree();
-				}
-
-				return ast;
-			}
-
-			return toTree();
+			return expr;
 		}
 
 		function definitionIncoming()
