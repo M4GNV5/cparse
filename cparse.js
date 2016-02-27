@@ -91,8 +91,8 @@ var cparse = (function()
 
 	return function(src, options)
 	{
-		var index = 0;
-		var curr = src[index];
+		var index = -1;
+		next();
 
 		options = options || {};
 		var typeNames = options.types || defaultTypeNames.slice(0);
