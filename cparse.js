@@ -127,11 +127,8 @@ var cparse = (function()
 				skipBlanks();
 				if(lookahead("struct"))
 				{
-					var stmt = {type: "StructDefinition", member: []};
+					var stmt = {type: "StructDefinition", member: [], pos: pos};
 					stmt.name = readIdentifier();
-
-					if(options.position)
-						stmt.pos = pos;
 
 					consume("{");
 
@@ -150,11 +147,8 @@ var cparse = (function()
 				}
 				else if(lookahead("enum"))
 				{
-					var stmt = {type: "EnumDefinition", member: []};
+					var stmt = {type: "EnumDefinition", member: [], pos: pos};
 					stmt.name = readIdentifier();
-
-					if(options.position)
-						stmt.pos = pos;
 
 					consume("{");
 
@@ -176,6 +170,7 @@ var cparse = (function()
 				{
 					var def = readDefinition();
 					def.type = "TypeDefStatement";
+					def.pos = pos;
 
 					typeNames.push(def.name);
 					sortTypeStrings();
@@ -186,8 +181,7 @@ var cparse = (function()
 				else if(definitionIncoming())
 				{
 					var def = readDefinition();
-					if(options.position)
-						def.pos = pos;
+					def.pos = pos;
 
 					if(lookahead("(")) //function definition
 					{
@@ -248,8 +242,6 @@ var cparse = (function()
 			{
 				var pos = getPos();
 				var stmt = parseStatement();
-				if(options.position)
-					stmt.pos = pos;
 				stmts.push(stmt);
 			}
 
@@ -259,17 +251,19 @@ var cparse = (function()
 
 		function parseStatement()
 		{
+			var pos = getPos();
 			if(lookahead("return"))
 			{
 				return {
 					type: "ReturnStatement",
-					value: parseExpression(";")
+					value: parseExpression(";"),
+					pos: pos
 				};
 			}
 			else if(lookahead("if"))
 			{
 				consume("(");
-				var stmt = {type: "IfStatement"};
+				var stmt = {type: "IfStatement", pos: pos};
 				stmt.condition = parseExpression(")");
 				stmt.body = parseBody();
 
@@ -284,12 +278,13 @@ var cparse = (function()
 				return {
 					type: "WhileStatement",
 					condition: parseExpression(")"),
-					body: parseBody()
+					body: parseBody(),
+					pos: pos
 				};
 			}
 			else if(lookahead("do"))
 			{
-				var stmt = {type: "DoWhileStatement"};
+				var stmt = {type: "DoWhileStatement", pos: pos};
 				stmt.body = parseBody();
 				consume("while");
 				consume("(");
@@ -300,7 +295,7 @@ var cparse = (function()
 			}
 			else if(lookahead("for"))
 			{
-				var stmt = {type: "ForStatement"};
+				var stmt = {type: "ForStatement", pos: pos};
 
 				consume("(");
 				stmt.init = parseStatement();
@@ -319,13 +314,15 @@ var cparse = (function()
 					consume(";");
 
 				def.type = "VariableDeclaration";
+				def.pos = pos;
 				return def;
 			}
 			else
 			{
 				return {
 					type: "ExpressionStatement",
-					expression: parseExpression(";")
+					expression: parseExpression(";"),
+					pos: pos
 				};
 			}
 		}
@@ -358,6 +355,7 @@ var cparse = (function()
 			while(ahead && ops[ahead] >= minPrec)
 			{
 				var op = ahead;
+				var pos = getPos();
 				consume(op);
 				var right = parseUnary();
 				ahead = peekBinaryOp();
@@ -372,7 +370,8 @@ var cparse = (function()
 					type: "BinaryExpression",
 					operator: op,
 					left: left,
-					right: right
+					right: right,
+					pos: pos
 				};
 			}
 			return left;
@@ -381,6 +380,7 @@ var cparse = (function()
 		function parseUnary()
 		{
 			var expr;
+			var pos = getPos();
 
 			for(var op in prefixedOps)
 			{
@@ -389,7 +389,8 @@ var cparse = (function()
 					return {
 						type: "PrefixExpression",
 						operator: op,
-						value: parseUnary()
+						value: parseUnary(),
+						pos: pos
 					};
 				}
 			}
@@ -500,7 +501,9 @@ var cparse = (function()
 					arguments: args
 				};
 			}
+			expr.pos = pos;
 
+			var suffixPos = getPos();
 			for(var op in suffixedOps)
 			{
 				if(lookahead(op))
@@ -508,7 +511,8 @@ var cparse = (function()
 					return {
 						type: "SuffixExpression",
 						operator: op,
-						value: expr
+						value: expr,
+						pos: suffixPos
 					};
 				}
 			}
@@ -543,7 +547,8 @@ var cparse = (function()
 			var def = {
 				type: "Definition",
 				modifier: [],
-				pointer: 0
+				pointer: 0,
+				pos: getPos()
 			};
 
 			do
