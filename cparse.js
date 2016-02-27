@@ -91,12 +91,14 @@ var cparse = (function()
 
 	return function(src, options)
 	{
+		var curr;
 		var index = -1;
-		next();
 
 		options = options || {};
 		var typeNames = options.types || defaultTypeNames.slice(0);
 		var typeModifier = options.modifier || defaultTypeModifier.slice(0);
+
+		var position = {line: 1, file: options.file || "unknown"};
 
 		function sortTypeStrings()
 		{
@@ -111,6 +113,7 @@ var cparse = (function()
 		}
 		sortTypeStrings();
 
+		next();
 		return parseRoot();
 
 		function parseRoot()
@@ -585,7 +588,7 @@ var cparse = (function()
 		{
 			return curr && curr == "\"";
 		}
-		function readString()
+		function readString(keepBlanks)
 		{
 			var val = [];
 			next(true, true);
@@ -603,7 +606,7 @@ var cparse = (function()
 				}
 			}
 
-			if(!lookahead("\""))
+			if(!lookahead("\"", keepBlanks))
 				unexpected("\"");
 
 			return val.join("");
@@ -647,9 +650,9 @@ var cparse = (function()
 		{
 			return curr && /[0-9]/.test(curr);
 		}
-		function readNumber()
+		function readNumber(keepBlanks)
 		{
-			var val = read(/[0-9\.]/, "Number", /[0-9]/);
+			var val = read(/[0-9\.]/, "Number", /[0-9]/, keepBlanks);
 			return parseFloat(val);
 		}
 
@@ -657,12 +660,12 @@ var cparse = (function()
 		{
 			return curr && /[A-Za-z_]/.test(curr);
 		}
-		function readIdentifier()
+		function readIdentifier(keepBlanks)
 		{
-			return read(/[A-Za-z0-9_]/, "Identifier", /[A-Za-z_]/);
+			return read(/[A-Za-z0-9_]/, "Identifier", /[A-Za-z_]/, keepBlanks);
 		}
 
-		function read(reg, expected, startreg)
+		function read(reg, expected, startreg, keepBlanks)
 		{
 			startreg = startreg || reg;
 
@@ -678,19 +681,18 @@ var cparse = (function()
 				next(true);
 			}
 
-			skipBlanks();
+			if(!keepBlanks)
+				skipBlanks();
 
 			return val.join("");
 		}
 
-		function getPos(i)
+		function getPos()
 		{
-			i = i || index;
-			var pos = {
-				line: src.substring(0, index).split("\n").length,
-				column: index - src.lastIndexOf("\n", index)
+			return {
+				file: position.file,
+				line: position.line
 			};
-			return pos;
 		}
 
 		function unexpected(expected)
@@ -699,19 +701,18 @@ var cparse = (function()
 			var _curr = JSON.stringify(curr || "EOF");
 
 			var msg = [
-				"Expecting",
-				expected,
-				"got",
-				_curr,
-				"at line",
+				pos.file,
+				":",
 				pos.line,
-				"column",
-				pos.column
-			].join(" ");
+				": Expecting ",
+				JSON.stringify(expected),
+				" got ",
+				_curr,
+			].join("");
 			throw new Error(msg);
 		}
 
-		function lookahead(str)
+		function lookahead(str, keepBlanks)
 		{
 			var _index = index;
 			for(var i = 0; i < str.length; i++)
@@ -732,7 +733,8 @@ var cparse = (function()
 				return false;
 			}
 
-			skipBlanks();
+			if(!keepBlanks)
+				skipBlanks();
 			return true;
 		}
 
@@ -756,12 +758,29 @@ var cparse = (function()
 		{
 			includeSpaces = includeSpaces || false;
 
+			if(curr == "\n")
+				position.line++;
 			index++;
 			curr = src[index];
 
 			do
 			{
 				var skipped = skipComments() || skipSpaces();
+
+				if(!includeSpaces && (index == 0 || src[index - 1] == "\n") && curr == "#")
+				{
+					consume("#");
+					var line = position.line = readNumber(true) - 1;
+					consume(" ");
+					position.file = readString(true);
+
+					while(curr != "\n")
+					{
+						index++;
+						curr = src[index];
+					}
+					skipped = true;
+				}
 			} while(skipped);
 
 			function skipSpaces()
@@ -773,6 +792,8 @@ var cparse = (function()
 				{
 					while(curr && /[\s\n]/.test(curr))
 					{
+						if(curr == "\n")
+							position.line++;
 						index++;
 						curr = src[index];
 					}
@@ -797,6 +818,8 @@ var cparse = (function()
 				{
 					while(curr != "*" || src[index + 1] != "/")
 					{
+						if(curr == "\n")
+							position.line++;
 						index++;
 						curr = src[index];
 					}
