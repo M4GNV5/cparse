@@ -29,7 +29,7 @@ Parsing code:
 int answer = 6 * 7;
 ```
 
-outputs following AST:
+outputs following AST (the positions of each AST entry have been removed to reduce size):
 ```JSON
 [
     {
@@ -56,7 +56,7 @@ outputs following AST:
 ]
 ```
 
-##License
+## License
 ```
 "THE BEER-WARE LICENSE":
 
