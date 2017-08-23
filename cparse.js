@@ -401,7 +401,7 @@ var cparse = (function()
 				{
 					expr = {
 						type: "CastExpression",
-						typeDef: readDefinition(true),
+						targetType: readDefinition(true),
 					};
 					consume(")");
 					expr.value = parseUnary()
@@ -544,10 +544,11 @@ var cparse = (function()
 		}
 		function readDefinition(nameless)
 		{
+			var name;
+			var pos = getPos();
 			var def = {
-				type: "Definition",
+				type: "Type",
 				modifier: [],
-				pointer: 0,
 				pos: getPos()
 			};
 
@@ -568,21 +569,45 @@ var cparse = (function()
 			{
 				if(lookahead(typeNames[i]))
 				{
-					def.typeName = typeNames[i];
+					def.name = typeNames[i];
 
 					while(lookahead("*"))
 					{
-						def.pointer++;
+						//TODO allow 'const' in between
+						def = {
+							type: "PointerType",
+							target: def,
+							pos: getPos()
+						};
 					}
 
 					if(!nameless)
-						def.name = readIdentifier();
+						name = readIdentifier();
 
-					while(lookahead("[]")) //TODO [length]
+					while(lookahead("["))
 					{
-						def.pointer++;
+						def = {
+							type: "PointerType",
+							target: def,
+							pos: getPos()
+						};
+
+						if(!lookahead("]"))
+						{
+							def.length = parseExpression();
+							consume("]");
+						}
 					}
 
+					if(name)
+					{
+						def = {
+							type: "Definition",
+							defType: def,
+							name: name,
+							pos: pos
+						};
+					}
 					return def;
 				}
 			}

@@ -34,21 +34,23 @@ outputs following AST:
 [
     {
         "type": "GlobalVariableDeclaration",
-        "modifier": [],
-        "pointer": 0,
+        "defType": {
+            "type": "Type",
+            "modifier": [],
+            "name": "int"
+        },
         "name": "answer",
-        "valueType": "int",
         "value": {
             "type": "BinaryExpression",
             "operator": "*",
-            "right": {
-                "type": "Literal",
-                "value": 7
-            },
             "left": {
                 "type": "Literal",
-                "value": 6
-            }
+                "value": 6,
+            },
+            "right": {
+                "type": "Literal",
+                "value": 7,
+            },
         }
     }
 ]
@@ -58,7 +60,7 @@ outputs following AST:
 ```
 "THE BEER-WARE LICENSE":
 
-Jakob Löw <eragonjml@googlemail.com> wrote this code. As long as you retain this notice you
+Jakob Löw <jakob@m4gnus.de> wrote this code. As long as you retain this notice you
 can do whatever you want with this stuff. If we meet some day, and you think
 this stuff is worth it, you can buy me a beer in return.
 ```
